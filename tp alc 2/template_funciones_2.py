@@ -119,7 +119,7 @@ def metpot1(A,tol=1e-8,maxrep=np.inf):
 def deflaciona(A,tol=1e-8,maxrep=np.Inf):
     # Recibe la matriz A, una tolerancia para el método de la potencia, y un número máximo de repeticiones
     v1,l1,_ = metpot1(A,tol,maxrep) # Buscamos primer autovector con método de la potencia
-    v1 = v1 / np.norm(v1,2) # Normalizamos
+    v1 = v1 / np.linalg.norm(v1,2) # Normalizamos
     deflA = A - l1 * np.outer(v1,v1) # Deflacionamos
     return deflA,v1,l1
 
@@ -141,18 +141,30 @@ def metpotI(A,mu,tol=1e-8,maxrep=np.Inf):
     l_min=1/sigma
     return v_min, l_min
 
-def metpotI2(A,mu,tol=1e-8,maxrep=np.Inf):
-   # Recibe la matriz A, y un valor mu y retorna el segundo autovalor y autovector de la matriz A, 
-   # suponiendo que sus autovalores son positivos excepto por el menor que es igual a 0
-   # Retorna el segundo autovector, su autovalor, y si el metodo llegó a converger.
-   n = A.shape[0]
-   X = A+mu*np.eye(n) # Calculamos la matriz A shifteada en mu
-   iX = resolver_LU(calculaLU(X), np.eye(n)) # La invertimos
-   defliX = deflaciona(iX,tol,maxrep) # La deflacionamos
-   v,l,_ = metpot1(defliX,tol=tol,maxrep=maxrep) # Buscamos su segundo autovector
-   l = 1/l # Reobtenemos el autovalor correcto
-   l -= mu
-   return v,l,_
+def metpotI2(A, mu, tol=1e-8, maxrep=np.Inf):
+    """
+    Recibe la matriz A, y un valor mu y retorna el segundo autovalor y autovector de la matriz A, 
+    suponiendo que sus autovalores son positivos excepto por el menor que es igual a 0.
+    Retorna el segundo autovector y su autovalor.
+    
+    Args:
+        A (numpy.ndarray): Matriz simétrica.
+        mu (float): Coeficiente de shifting.
+        tol (float): Tolerancia para la convergencia.
+        maxrep (int): Máximo número de iteraciones.
+    
+    Returns:
+        tuple: (autovector, autovalor) donde autovalor es el segundo autovalor más chico de A
+        y autovector es el autovector asociado.
+    """
+    n = A.shape[0]
+    X = A + mu * np.eye(n)  # Calculamos la matriz A shifteada en mu
+    iX = resolver_LU(calculaLU(X), np.eye(n))  # La invertimos
+    defliX = deflaciona(iX, tol, maxrep)  # La deflacionamos
+    v, l, converged = metpot1(defliX, tol=tol, maxrep=maxrep)  # Buscamos su segundo autovector
+    l = 1/l  # Reobtenemos el autovalor correcto
+    l -= mu
+    return v, l
 
 
 def laplaciano_iterativo(A,niveles,nombres_s=None):
@@ -216,4 +228,3 @@ def modularidad_iterativo(A=None,R=None,nombres_s=None):
             else:
                 # Sino, repetimos para los subniveles
                 return(...)
-
