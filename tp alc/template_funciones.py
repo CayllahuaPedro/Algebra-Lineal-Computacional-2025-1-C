@@ -77,22 +77,27 @@ def calculaLU(A):
             
     return Ac
 
-def graph_map_rank (ranking_scores, barrios, museos):
-    normalized_ranking_scores = (ranking_scores - ranking_scores.min()) / (ranking_scores.max() - ranking_scores.min())
 
-
-    # graficar mapa
+def graficar_museos_comunidades(museos, barrios, comunidades, title="Museos de CABA por Comunidad"):
+    """
+    museos: GeoDataFrame con los puntos de los museos
+    barrios: GeoDataFrame con los polígonos de CABA
+    comunidades: lista de listas de índices de museos (una por comunidad)
+    """
     fig, ax = plt.subplots(figsize=(10, 10))
-    barrios.boundary.plot(color='gray', ax=ax)
+    barrios.plot(ax=ax, facecolor='white', edgecolor='gray')
 
-    # graficar museos con label de ranking.
-    museos.plot(ax=ax, column=normalized_ranking_scores, cmap='viridis', legend=True, markersize=normalized_ranking_scores*100)  # Adjust markersize for better visibility
+    # Crear un mapa de colores con un color por comunidad
+    cmap = plt.get_cmap("tab20")
+    n_comunidades = len(comunidades)
 
-    # Asociar cada museo con su ranking
-    #for x, y, label in zip(museos.geometry.x, museos.geometry.y, normalized_ranking_scores):
-    #    ax.annotate(f'{label:.2f}', xy=(x, y), xytext=(3, 3), textcoords="offset points", fontsize=8)
+    for i, comunidad in enumerate(comunidades):
+        color = cmap(i % 20)  # Se repiten colores si hay más de 20 comunidades
+        museos.iloc[comunidad].plot(ax=ax, markersize=40, color=color, label=f'Comunidad {i+1}')
 
-    plt.title("Museos de CABA con Rankings")
+    ax.set_title(title)
+    ax.axis('off')
+    ax.legend()
     plt.show()
 
 def resolver_LU (L,U,b):

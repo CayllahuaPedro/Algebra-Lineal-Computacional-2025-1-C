@@ -10,6 +10,8 @@
 #    [0, 0, 0, 0, 1, 1, 1, 0]
 #])
 
+import numpy as np
+import scipy.linalg
 
 def calculaLU(A):
     # matriz es una matriz de NxN
@@ -40,15 +42,19 @@ def calculaLU(A):
             
     return Ac
 
-def resolver_LU (LU,b):
-    # Resuelve el sistema Ax=b usando la factorización LU
-    # L: matriz triangular inferior
-    # U: matriz triangular superior
-    # b: vector de términos independientes
-    # Retorna el vector solución x
-    # tenes  L U X = b
+def resolver_LU(LU, b):
+    """
+    Resuelve el sistema lineal Ax = b usando la descomposición LU de A.
+
+    Args:
+        LU: Matriz de la descomposición LU de A.
+        b: Vector o matriz del lado derecho del sistema.
+
+    Returns:
+        La solución x del sistema Ax = b.
+    """
     L = np.tril(LU,-1) + np.eye(LU.shape[0])
-    U = np.triu(LU) 
+    U = np.triu(LU)
     y = scipy.linalg.solve_triangular(L, b, lower=True)  # Resolvemos Ly = b
     x = scipy.linalg.solve_triangular(U, y)  # Resolvemos Ux = y
     return x
@@ -116,14 +122,14 @@ def metpot1(A,tol=1e-8,maxrep=np.inf):
    l = v1.T @ A @ v1 # Calculamos el autovalor
    return v1,l,nrep<maxrep
 
-def deflaciona(A,tol=1e-8,maxrep=np.Inf):
+def deflaciona(A,tol=1e-8,maxrep=np.inf):
     # Recibe la matriz A, una tolerancia para el método de la potencia, y un número máximo de repeticiones
     v1,l1,_ = metpot1(A,tol,maxrep) # Buscamos primer autovector con método de la potencia
     v1 = v1 / np.linalg.norm(v1,2) # Normalizamos
     deflA = A - l1 * np.outer(v1,v1) # Deflacionamos
     return deflA,v1,l1
 
-def metpot2(A,v1,l1,tol=1e-8,maxrep=np.Inf):
+def metpot2(A,v1,l1,tol=1e-8,maxrep=np.inf):
    # La funcion aplica el metodo de la potencia para buscar el segundo autovalor de A, suponiendo que sus autovectores son ortogonales
    # v1 y l1 son los primeors autovectores y autovalores de A}
    # Have fun!
@@ -131,8 +137,8 @@ def metpot2(A,v1,l1,tol=1e-8,maxrep=np.Inf):
    return metpot1(deflA,tol,maxrep)
 
 
-def metpotI(A,mu,tol=1e-8,maxrep=np.Inf):
-    # Retorna el primer autovalor de la inversa de A + mu * I, junto a su autovector y si el método convergió.
+def metpotI(A,mu,tol=1e-8,maxrep=np.inf):
+    # Retorna el primer autovalor de la inversa de A + mu * I, junto a su autovector 
     n = A.shape[0]
     A= A+mu*np.eye(n)
     LU= calculaLU(A)
@@ -141,11 +147,11 @@ def metpotI(A,mu,tol=1e-8,maxrep=np.Inf):
     l_min=1/sigma
     return v_min, l_min
 
-def metpotI2(A, mu, tol=1e-8, maxrep=np.Inf):
+def metpotI2(A, mu, tol=1e-8, maxrep=np.inf):
     """
     Recibe la matriz A, y un valor mu y retorna el segundo autovalor y autovector de la matriz A, 
     suponiendo que sus autovalores son positivos excepto por el menor que es igual a 0.
-    Retorna el segundo autovector y su autovalor.
+    Retorna el segundo mas chico autovector y su autovalor.
     
     Args:
         A (numpy.ndarray): Matriz simétrica.
@@ -160,7 +166,7 @@ def metpotI2(A, mu, tol=1e-8, maxrep=np.Inf):
     n = A.shape[0]
     X = A + mu * np.eye(n)  # Calculamos la matriz A shifteada en mu
     iX = resolver_LU(calculaLU(X), np.eye(n))  # La invertimos
-    defliX = deflaciona(iX, tol, maxrep)  # La deflacionamos
+    defliX, _, _ = deflaciona(iX, tol, maxrep)  # La deflacionamos
     v, l, converged = metpot1(defliX, tol=tol, maxrep=maxrep)  # Buscamos su segundo autovector
     l = 1/l  # Reobtenemos el autovalor correcto
     l -= mu
@@ -177,10 +183,13 @@ def laplaciano_iterativo(A,niveles,nombres_s=None):
         return([nombres_s])
     else: # Sino:
         L = calcula_L(A) # Recalculamos el L
-        v,l,_ = ... # Encontramos el segundo autovector de L
+        v,l= metpotI2(L,1) # Encontramos el segundo autovector de L
         # Recortamos A en dos partes, la que está asociada a el signo positivo de v y la que está asociada al negativo
-        Ap = ... # Asociado al signo positivo
-        Am = ... # Asociado al signo negativo
+        s= np.sign(v)
+        idx_pos = np.where(s > 0)[0]
+        idx_neg = np.where(s < 0)[0]
+        Ap = A[np.ix_(idx_pos,idx_pos)] # Asociado al signo positivo
+        Am = A[np.ix_(idx_neg,idx_neg)] # Asociado al signo negativo
         
         return(
                 laplaciano_iterativo(Ap,niveles-1,
@@ -188,7 +197,6 @@ def laplaciano_iterativo(A,niveles,nombres_s=None):
                 laplaciano_iterativo(Am,niveles-1,
                                      nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi<0])
                 )        
-
 
 def modularidad_iterativo(A=None,R=None,nombres_s=None):
     # Recibe una matriz A, una matriz R de modularidad, y los nombres de los nodos
@@ -203,19 +211,22 @@ def modularidad_iterativo(A=None,R=None,nombres_s=None):
         nombres_s = range(R.shape[0])
     # Acá empieza lo bueno
     if R.shape[0] == 1: # Si llegamos al último nivel
-        return(...)
+        return([nombres_s])
     else:
-        v,l,_ = ... # Primer autovector y autovalor de R
+        v,l,_ = metpot1(R,1e-8) # Primer autovector y autovalor de R
         # Modularidad Actual:
         Q0 = np.sum(R[v>0,:][:,v>0]) + np.sum(R[v<0,:][:,v<0])
         if Q0<=0 or all(v>0) or all(v<0): # Si la modularidad actual es menor a cero, o no se propone una partición, terminamos
-            return(...)
+            return([nombres_s])
         else:
             ## Hacemos como con L, pero usando directamente R para poder mantener siempre la misma matriz de modularidad
-            Rp = ... # Parte de R asociada a los valores positivos de v
-            Rm = ... # Parte asociada a los valores negativos de v
-            vp,lp,_ = ...  # autovector principal de Rp
-            vm,lm,_ = ... # autovector principal de Rm
+            s= np.sign(v)
+            idx_pos = np.where(s > 0)[0]
+            idx_neg = np.where(s < 0)[0]
+            Rp = R[np.ix_(idx_pos,idx_pos)] # Parte de R asociada a los valores positivos de v
+            Rm = R[np.ix_(idx_neg,idx_neg)] # Parte asociada a los valores negativos de v
+            vp,lp,_ = metpot1(Rp,1e-8)  # autovector principal de Rp
+            vm,lm,_ = metpot1(Rm,1e-8) # autovector principal de Rm
         
             # Calculamos el cambio en Q que se produciría al hacer esta partición
             Q1 = 0
@@ -227,4 +238,4 @@ def modularidad_iterativo(A=None,R=None,nombres_s=None):
                 return([[ni for ni,vi in zip(nombres_s,v) if vi>0],[ni for ni,vi in zip(nombres_s,v) if vi<0]])
             else:
                 # Sino, repetimos para los subniveles
-                return(...)
+                return(modularidad_iterativo(A=Rp,nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi>0]) + modularidad_iterativo(A=Rm,nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi<0]))
