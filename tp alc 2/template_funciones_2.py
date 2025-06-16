@@ -11,71 +11,145 @@
 #])
 
 
+def calculaLU(A):
+    # matriz es una matriz de NxN
+    # Retorna la factorización LU a través de una lista con dos matrices L y U de NxN.
+    # Completar! Have fun
+    m=A.shape[0]#fila
+    n=A.shape[1]
+    Ac = A.copy()#U
+    #L=np.eye(n)
+    if m!=n:
+        print('Matriz no cuadrada')
+        return
+    
+    ## desde aqui -- CODIGO A COMPLETAR
+    print(n)
+    for j in range(n):
+        for i in range (j+1,n):
+            mult=Ac[i,j]/Ac[j,j] #escalonas/mult es el factor tipo f2-multf1
+            Ac[i,j:] = Ac[i,j:]-mult*Ac[j,j:]#resta de finlas// j: dessde j hasta el final
+            Ac[i,j]=mult
+         #   Ac[i,:]==Ac[i,:]-L[i,j]*Ac[j,:] 
+           # cant_op= cant_op+2
+          #  return L, Ac, cant_op
+                 
+    #L = np.tril(Ac,-1) + np.eye(A.shape[0]) #np.eye es la matriz con 1 en diagonal ()
+    #U = np.triu(Ac) #CAPTA LA DIAGONAL INFERIOE
+         
+            
+    return Ac
+
+def resolver_LU (LU,b):
+    # Resuelve el sistema Ax=b usando la factorización LU
+    # L: matriz triangular inferior
+    # U: matriz triangular superior
+    # b: vector de términos independientes
+    # Retorna el vector solución x
+    # tenes  L U X = b
+    L = np.tril(LU,-1) + np.eye(LU.shape[0])
+    U = np.triu(LU) 
+    y = scipy.linalg.solve_triangular(L, b, lower=True)  # Resolvemos Ly = b
+    x = scipy.linalg.solve_triangular(U, y)  # Resolvemos Ux = y
+    return x
+
 def calcula_L(A):
     # La función recibe la matriz de adyacencia A y calcula la matriz laplaciana
     # Have fun!!
+    diagonal=np.sum(A,axis=1)
+    K= np.diag(diagonal)
+    L=K-A
     return L
 
 def calcula_R(A):
+    # R=A-P
     # La funcion recibe la matriz de adyacencia A y calcula la matriz de modularidad
     # Have fun!!
+    P=np.zeros(A.shape)
+    diagonal=np.sum(A,axis=1)
+    K= np.diag(diagonal)
+   # print(K)
+    E= np.sum(A) / 2
+    for i in range(A.shape[0]) :
+      for j in range(A.shape[1]):
+          P[i,j]= (K[i,i]* K[j,j])/(2*E)
+    print(E)
+    print(P)
+
+    R=A-P
     return R
 
+
 def calcula_lambda(L,v):
+    s=np.sign(v)
     # Recibe L y v y retorna el corte asociado
     # Have fun!
+    #lamdom = 1/4st*l*s
+    lambdon = 1/4 * s.transpose() @ L @ s
     return lambdon
 
+
 def calcula_Q(R,v):
+    s=np.sign(v)
     # La funcion recibe R y s y retorna la modularidad (a menos de un factor 2E)
+    Q= s.transpose()*R *s
     return Q
 
-def metpot1(A,tol=1e-8,maxrep=np.Inf):
+def metpot1(A,tol=1e-8,maxrep=np.inf):
    # Recibe una matriz A y calcula su autovalor de mayor módulo, con un error relativo menor a tol y-o haciendo como mucho maxrep repeticiones
-   v = ... # Generamos un vector de partida aleatorio, entre -1 y 1
-   v = ... # Lo normalizamos
-   v1 = ... # Aplicamos la matriz una vez
-   v1 = ... # normalizamos
-   l = ... # Calculamos el autovector estimado
-   l1 = ... # Y el estimado en el siguiente paso
+   v = np.random.uniform(-1, 1, A.shape[0]) # Generamos un vector de partida aleatorio, entre -1 y 1
+   v = v / np.linalg.norm(v) # Lo normalizamos
+   v1 = A @ v # Aplicamos la matriz una vez
+   v1 = v1 / np.linalg.norm(v1) # normalizamos
+   l = v.T @ A @ v # Calculamos el autovector estimado
+   l1 = v1.T @ A @ v1 # Y el estimado en el siguiente paso
    nrep = 0 # Contador
-   while np.abs(l1-l)/np.abs(l) > tol and nrep < maxrep: # Si estamos por debajo de la tolerancia buscada 
+   while np.abs(l1-l)/np.abs(l) > tol and nrep < maxrep: # Si estamos por debajo de la tolerancia buscada
       v = v1 # actualizamos v y repetimos
       l = l1
-      v1 = ... # Calculo nuevo v1
-      v1 = ... # Normalizo
-      l1 = ... # Calculo autovector
+      v1 = A @ v # Calculo nuevo v1
+      v1 = v1 / np.linalg.norm(v1) # Normalizo
+      l1 = v1.T @ A @ v1 # Calculo autovector
       nrep += 1 # Un pasito mas
    if not nrep < maxrep:
       print('MaxRep alcanzado')
-   l = ... # Calculamos el autovalor
+   l = v1.T @ A @ v1 # Calculamos el autovalor
    return v1,l,nrep<maxrep
 
 def deflaciona(A,tol=1e-8,maxrep=np.Inf):
     # Recibe la matriz A, una tolerancia para el método de la potencia, y un número máximo de repeticiones
     v1,l1,_ = metpot1(A,tol,maxrep) # Buscamos primer autovector con método de la potencia
-    deflA = ... # Sugerencia, usar la funcion outer de numpy
-    return deflA
+    v1 = v1 / np.norm(v1,2) # Normalizamos
+    deflA = A - l1 * np.outer(v1,v1) # Deflacionamos
+    return deflA,v1,l1
 
 def metpot2(A,v1,l1,tol=1e-8,maxrep=np.Inf):
    # La funcion aplica el metodo de la potencia para buscar el segundo autovalor de A, suponiendo que sus autovectores son ortogonales
    # v1 y l1 son los primeors autovectores y autovalores de A}
    # Have fun!
+   
    return metpot1(deflA,tol,maxrep)
 
 
 def metpotI(A,mu,tol=1e-8,maxrep=np.Inf):
     # Retorna el primer autovalor de la inversa de A + mu * I, junto a su autovector y si el método convergió.
-    return metpot1(...,tol=tol,maxrep=maxrep)
+    n = A.shape[0]
+    A= A+mu*np.eye(n)
+    LU= calculaLU(A)
+    A_inv= resolver_LU(LU, np.eye(n))
+    v_min, sigma, _ = metpot1(A_inv,tol=tol,maxrep=maxrep)
+    l_min=1/sigma
+    return v_min, l_min
 
 def metpotI2(A,mu,tol=1e-8,maxrep=np.Inf):
    # Recibe la matriz A, y un valor mu y retorna el segundo autovalor y autovector de la matriz A, 
    # suponiendo que sus autovalores son positivos excepto por el menor que es igual a 0
    # Retorna el segundo autovector, su autovalor, y si el metodo llegó a converger.
-   X = ... # Calculamos la matriz A shifteada en mu
-   iX = ... # La invertimos
-   defliX = ... # La deflacionamos
-   v,l,_ =  ... # Buscamos su segundo autovector
+   n = A.shape[0]
+   X = A+mu*np.eye(n) # Calculamos la matriz A shifteada en mu
+   iX = resolver_LU(calculaLU(X), np.eye(n)) # La invertimos
+   defliX = deflaciona(iX,tol,maxrep) # La deflacionamos
+   v,l,_ = metpot1(defliX,tol=tol,maxrep=maxrep) # Buscamos su segundo autovector
    l = 1/l # Reobtenemos el autovalor correcto
    l -= mu
    return v,l,_
