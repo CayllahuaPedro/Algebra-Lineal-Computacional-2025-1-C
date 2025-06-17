@@ -183,20 +183,46 @@ def laplaciano_iterativo(A,niveles,nombres_s=None):
         return([nombres_s])
     else: # Sino:
         L = calcula_L(A) # Recalculamos el L
-        v,l= metpotI2(L,1) # Encontramos el segundo autovector de L
-        # Recortamos A en dos partes, la que está asociada a el signo positivo de v y la que está asociada al negativo
-        s= np.sign(v)
-        idx_pos = np.where(s > 0)[0]
-        idx_neg = np.where(s < 0)[0]
-        Ap = A[np.ix_(idx_pos,idx_pos)] # Asociado al signo positivo
-        Am = A[np.ix_(idx_neg,idx_neg)] # Asociado al signo negativo
         
-        return(
-                laplaciano_iterativo(Ap,niveles-1,
-                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi>0]) +
-                laplaciano_iterativo(Am,niveles-1,
-                                     nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi<0])
-                )        
+        # Check if L is a valid matrix for eigenvector calculation
+        if np.isnan(L).any() or np.isinf(L).any():
+            # If L contains NaN or inf values, don't partition further
+            return([nombres_s])
+            
+        try:
+            v,l = metpotI2(L,1) # Encontramos el segundo autovector de L
+            
+            # Check if the eigenvector contains NaN or inf values
+            if np.isnan(v).any() or np.isinf(v).any():
+                return([nombres_s])
+                
+            # Recortamos A en dos partes, la que está asociada a el signo positivo de v y la que está asociada al negativo
+            s = np.sign(v)
+            
+            # Check if all signs are the same (can't partition)
+            if np.all(s >= 0) or np.all(s <= 0):
+                return([nombres_s])
+                
+            idx_pos = np.where(s > 0)[0]
+            idx_neg = np.where(s < 0)[0]
+            
+            # Check if we have a valid partition
+            if len(idx_pos) == 0 or len(idx_neg) == 0:
+                return([nombres_s])
+                
+            Ap = A[np.ix_(idx_pos,idx_pos)] # Asociado al signo positivo
+            Am = A[np.ix_(idx_neg,idx_neg)] # Asociado al signo negativo
+            
+            return(
+                    laplaciano_iterativo(Ap,niveles-1,
+                                         nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi>0]) +
+                    laplaciano_iterativo(Am,niveles-1,
+                                         nombres_s=[ni for ni,vi in zip(nombres_s,v) if vi<0])
+                    )
+        except Exception as e:
+            # If any error occurs during the calculation, don't partition further
+            print(f"Error in laplaciano_iterativo: {e}")
+            return([nombres_s])
 
 def modularidad_iterativo(A=None,R=None,nombres_s=None):
     # Recibe una matriz A, una matriz R de modularidad, y los nombres de los nodos
